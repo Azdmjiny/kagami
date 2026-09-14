@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @Bindable var store: KagamiStore
     @State private var testWord = ""
+    @State private var apiKey = ""
 
     var body: some View {
         Form {
@@ -16,6 +17,21 @@ struct SettingsView: View {
                     Text("推荐 qwen3:4b-instruct")
                         .font(.caption).foregroundStyle(.secondary)
                 }
+            }
+            Section("云端 API") {
+                Toggle("优先使用云端模型", isOn: $store.preferences.cloudEnabled)
+                Text("联网时优先调用云端；连接超时、断网或请求失败时可自动改用下方的本地 Ollama 模型。")
+                    .font(.caption).foregroundStyle(.secondary)
+                TextField("兼容 API 地址", text: $store.preferences.cloudBaseURL)
+                    .textFieldStyle(.roundedBorder)
+                TextField("云端模型名称", text: $store.preferences.cloudModelName)
+                    .textFieldStyle(.roundedBorder)
+                SecureField("API 密钥（保存在 macOS 钥匙串）", text: $apiKey)
+                    .textFieldStyle(.roundedBorder)
+                    .onChange(of: apiKey) { _, newValue in store.updateAPIKey(newValue) }
+                Toggle("云端失败时回退本地模型", isOn: $store.preferences.fallbackToLocal)
+                Text("默认接口是 OpenAI 兼容的 Chat Completions：例如 https://api.openai.com/v1。")
+                    .font(.caption).foregroundStyle(.secondary)
             }
             Section("AnkiConnect") {
                 Picker("默认卡组", selection: $store.preferences.defaultDeck) {
@@ -57,6 +73,7 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
+        .task { apiKey = store.loadAPIKey() }
         .alert("无法完成操作", isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.clearError() } })) {
             Button("好", role: .cancel) { store.clearError() }
         } message: { Text(store.error?.localizedDescription ?? "未知错误") }

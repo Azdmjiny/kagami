@@ -30,17 +30,23 @@ struct ContentView: View {
             }
 
             GroupBox("翻译") {
-                TextEditor(text: $store.translation)
-                    .font(.body)
-                    .frame(minHeight: 150)
-                    .overlay(alignment: .topLeading) {
-                        if store.translation.isEmpty {
-                            Text("翻译结果将在这里出现，并且可以手动修改。")
-                                .foregroundStyle(.tertiary)
-                                .padding(8)
-                                .allowsHitTesting(false)
+                VStack(alignment: .leading, spacing: 8) {
+                    TextEditor(text: $store.translation)
+                        .font(.body)
+                        .frame(minHeight: 150)
+                        .overlay(alignment: .topLeading) {
+                            if store.translation.isEmpty {
+                                Text("翻译结果将在这里出现，并且可以手动修改。")
+                                    .foregroundStyle(.tertiary)
+                                    .padding(8)
+                                    .allowsHitTesting(false)
+                            }
                         }
+                    if !store.modelStatus.isEmpty {
+                        Label(store.modelStatus, systemImage: store.modelStatus.contains("回退") ? "arrow.triangle.2.circlepath" : "cpu")
+                            .font(.caption).foregroundStyle(.secondary)
                     }
+                }
             }
 
             Spacer(minLength: 0)

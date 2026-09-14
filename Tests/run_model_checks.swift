@@ -22,6 +22,7 @@ struct KagamiModelChecks {
             try await verifiesCardWorkflowWithMockServices()
             try await verifiesSavedConnectionRestore()
             try await verifiesServiceFailuresReachTheUIState()
+            try await verifiesCloudFailureFallsBackToLocal()
             print("Kagami model checks passed")
         } catch {
             fputs("Kagami model checks failed: \(error)\n", stderr)
@@ -72,11 +73,24 @@ struct KagamiModelChecks {
     }
 
     @MainActor
-    private static func makeTestStore(ollama: any OllamaServing, anki: any AnkiConnecting) -> KagamiStore {
+    private static func verifiesCloudFailureFallsBackToLocal() async throws {
+        let ollama = MockOllama(responses: ["{\"translation\":\"本地苹果\"}"])
+        let store = makeTestStore(ollama: ollama, api: FailingAPI(), apiKeyStore: MockAPIKeyStore(key: "test-key"), anki: MockAnki())
+        store.preferences.cloudEnabled = true
+        store.preferences.cloudModelName = "strong-cloud-model"
+        store.preferences.fallbackToLocal = true
+        store.input = "apple"
+        await store.translate()
+        try require(store.translation == "本地苹果", "云端失败后没有回退到本地模型。")
+        try require(store.modelStatus.contains("回退"), "界面没有说明已回退本地模型。")
+    }
+
+    @MainActor
+    private static func makeTestStore(ollama: any OllamaServing, api: any APIModelServing = APIModelClient(), apiKeyStore: any APIKeyStoring = MockAPIKeyStore(key: ""), anki: any AnkiConnecting) -> KagamiStore {
         let suiteName = "KagamiModelChecks"
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
-        return KagamiStore(ollama: ollama, anki: anki, preferences: .init(defaults: defaults))
+        return KagamiStore(ollama: ollama, api: api, apiKeyStore: apiKeyStore, anki: anki, preferences: .init(defaults: defaults))
     }
 }
 
@@ -98,6 +112,18 @@ private actor MockOllama: OllamaServing {
 private actor FailingOllama: OllamaServing {
     func fetchModels() async throws -> [String] { throw KagamiError.connection(service: "Ollama", detail: "未运行") }
     func generate(model: String, prompt: String, system: String?) async throws -> String { throw KagamiError.connection(service: "Ollama", detail: "未运行") }
+}
+
+private actor FailingAPI: APIModelServing {
+    func generate(baseURL: String, apiKey: String, model: String, prompt: String, system: String?) async throws -> String {
+        throw KagamiError.connection(service: "云端 API", detail: "离线")
+    }
+}
+
+private struct MockAPIKeyStore: APIKeyStoring {
+    let key: String
+    func load() -> String? { key.isEmpty ? nil : key }
+    func save(_ key: String) throws {}
 }
 
 private actor MockAnki: AnkiConnecting {
