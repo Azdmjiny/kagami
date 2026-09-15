@@ -22,11 +22,17 @@ Kagami 的初衷很简单：把查词、整理释义、填写卡片和同步 Ank
 
 ## 快速开始
 
+### 下载并安装
+
+1. 从 [Releases](https://github.com/Azdmjiny/kagami/releases/latest) 下载最新版 `Kagami-v*.dmg`。
+2. 双击打开 DMG，将 `Kagami.app` 拖入「应用程序」文件夹后启动。
+
+> 目前仅提供 Apple Silicon（M 系列芯片）Mac 版本，需要 macOS 14 或更高版本。Kagami 尚未经过 Apple 开发者签名；首次打开时如遇系统提示，可在 Finder 中按住 Control 点按 App，再选择「打开」。
+
 **准备工作**
 
-1. 使用 macOS 14 或更高版本。
-2. 安装并打开 [Anki](https://apps.ankiweb.net/)，并安装 [AnkiConnect](https://ankiweb.net/shared/info/2055492159) 插件。
-3. 选择一种模型来源：
+1. 安装并打开 [Anki](https://apps.ankiweb.net/)，并安装 [AnkiConnect](https://ankiweb.net/shared/info/2055492159) 插件。
+2. 选择一种模型来源：
    - 本地：安装并启动 Ollama，下载一个模型（推荐 `qwen3:8b`）。
    - 云端：准备一个 OpenAI Chat Completions 兼容 API 的地址、模型名和密钥（实测本地小模型效果不太好，最好还是用聪明的的模型，翻译也用不了多少token）。
 
@@ -38,7 +44,7 @@ Kagami 的初衷很简单：把查词、整理释义、填写卡片和同步 Ank
 4. 检查或修改翻译，点击「添加到 Anki」。
 5. 预览卡片字段，确认后写入 Anki。
 
-## 从源码运行
+## 从源码构建
 
 ```bash
 ./script/build_and_run.sh
