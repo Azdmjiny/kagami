@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760">
+  <rect width="1200" height="760" rx="22" fill="#f7f7f9"/>
+  <rect width="1200" height="66" rx="22" fill="#fff"/><rect y="45" width="1200" height="21" fill="#fff"/>
+  <text x="42" y="42" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="20" font-weight="600" fill="#36363b">Kagami 设置</text>
+  <text x="46" y="115" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="20" font-weight="700" fill="#303036">Ollama</text>
+  <rect x="46" y="134" width="1108" height="57" rx="10" fill="#fff" stroke="#e5e5e9"/>
+  <text x="65" y="169" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="17" fill="#333339">默认模型</text><text x="900" y="169" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="17" fill="#53535c">qwen3:8b  ▾</text>
+  <text x="46" y="240" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="20" font-weight="700" fill="#303036">云端 API</text>
+  <rect x="46" y="259" width="1108" height="177" rx="10" fill="#fff" stroke="#e5e5e9"/>
+  <text x="66" y="295" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="17" fill="#333339">优先使用云端模型</text><rect x="1083" y="276" width="49" height="27" rx="14" fill="#6b57e8"/><circle cx="1118" cy="289.5" r="10" fill="#fff"/>
+  <text x="66" y="331" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="14" fill="#85858c">兼容 OpenAI Chat Completions 的 API，可在连接失败时自动回退到本地模型。</text>
+  <rect x="66" y="348" width="510" height="54" rx="7" fill="#fafafd" stroke="#dfdfe5"/><text x="81" y="381" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="16" fill="#8a8a92">兼容 API 地址</text>
+  <rect x="594" y="348" width="538" height="54" rx="7" fill="#fafafd" stroke="#dfdfe5"/><text x="609" y="381" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="16" fill="#8a8a92">云端模型名称</text>
+  <text x="46" y="489" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="20" font-weight="700" fill="#303036">AnkiConnect</text>
+  <rect x="46" y="508" width="1108" height="157" rx="10" fill="#fff" stroke="#e5e5e9"/>
+  <text x="66" y="545" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="17" fill="#333339">默认卡组</text><text x="935" y="545" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="17" fill="#53535c">请选择  ▾</text>
+  <text x="66" y="583" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="17" fill="#333339">笔记类型</text><text x="935" y="583" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="17" fill="#53535c">请选择  ▾</text>
+  <rect x="66" y="610" width="120" height="33" rx="7" fill="#ececf0"/><text x="80" y="632" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="15" font-weight="600" fill="#414149">连接并刷新</text>
+  <rect x="198" y="610" width="94" height="33" rx="7" fill="#ececf0"/><text x="214" y="632" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="15" font-weight="600" fill="#414149">刷新字段</text>
+</svg>
