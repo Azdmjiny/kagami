@@ -18,7 +18,7 @@ Kagami 的初衷很简单：把查词、整理释义、填写卡片和同步 Ank
 - **按模板制卡**：读取 Anki 的卡组、笔记类型和字段名，按你的模板生成卡片内容与例句。
 - **确认后同步**：预览并编辑各字段，确认后即可写入指定 Anki 卡组。
 
-![Kagami 设置：模型来源与 AnkiConnect](docs/images/settings.svg)
+![Kagami 设置：模型来源与 AnkiConnect](docs/images/settings.png)
 
 ## 快速开始
 

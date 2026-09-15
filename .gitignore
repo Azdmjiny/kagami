@@ -1,3 +1,6 @@
+.DS_Store
+.codex/
 .build/
 dist/
-.DS_Store
+.swiftpm/
+DerivedData/
