@@ -8,7 +8,7 @@
 
 Kagami 的初衷很简单：把查词、整理释义、填写卡片和同步 Anki 这几步连成一条顺畅的流程，让制卡更轻松，把时间留给记忆本身。
 
-![Kagami 主界面：输入单词、生成翻译并添加到 Anki](docs/images/main-window.svg)
+![Kagami 主界面：输入单词、生成翻译并添加到 Anki](docs/images/main-window-readme.png)
 
 ## 能做什么
 
