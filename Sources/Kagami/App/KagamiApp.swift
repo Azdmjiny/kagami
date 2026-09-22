@@ -6,7 +6,7 @@ struct KagamiApp: App {
     private let updateManager = UpdateManager()
 
     var body: some Scene {
-        WindowGroup("Kagami") {
+        Window("Kagami", id: "main") {
             Group {
                 if store.preferences.hasCompletedLanguageSetup {
                     ContentView(store: store)

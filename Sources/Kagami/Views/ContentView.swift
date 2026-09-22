@@ -107,9 +107,16 @@ private struct AddCardSheet: View {
             Picker(store.text("写入卡组"), selection: $deck) {
                 ForEach(store.deckNames, id: \.self) { Text($0).tag($0) }
             }
-            TextField(store.text("例句（可选，留空则由 AI 生成）"), text: $example, axis: .vertical)
-                .textFieldStyle(.roundedBorder)
-                .lineLimit(2...4)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(store.text("例句（可选，留空则由 AI 生成）"))
+                    .font(.subheadline)
+                TextEditor(text: $example)
+                    .font(.body)
+                    .frame(height: 160)
+                    .padding(4)
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(.quaternary))
+                    .accessibilityLabel(store.text("例句（可选，留空则由 AI 生成）"))
+            }
             Text(store.text("下一步将按当前 Anki 笔记类型的字段名生成内容，供你确认。"))
                 .font(.caption).foregroundStyle(.secondary)
             HStack {
@@ -123,7 +130,7 @@ private struct AddCardSheet: View {
             }
         }
         .padding(24)
-        .frame(width: 480)
+        .frame(width: 600)
     }
 }
 
