@@ -13,6 +13,9 @@ final class KagamiStore {
         var defaultDeck: String { didSet { save() } }
         var noteType: String { didSet { save() } }
         var promptStyle: String { didSet { save() } }
+        var languageCode: String { didSet { save() } }
+        var hasCompletedLanguageSetup: Bool { didSet { save() } }
+        var usesDefaultPromptStyle: Bool { didSet { save() } }
 
         init(defaults: UserDefaults = .standard) {
             self.defaults = defaults
@@ -24,6 +27,9 @@ final class KagamiStore {
             defaultDeck = defaults.string(forKey: "ankiDeck") ?? ""
             noteType = defaults.string(forKey: "ankiNoteType") ?? ""
             promptStyle = defaults.string(forKey: "promptStyle") ?? PromptFactory.defaultStyle
+            languageCode = defaults.string(forKey: "languageCode") ?? AppLanguage.simplifiedChinese.rawValue
+            hasCompletedLanguageSetup = defaults.object(forKey: "hasCompletedLanguageSetup") as? Bool ?? false
+            usesDefaultPromptStyle = (defaults.object(forKey: "usesDefaultPromptStyle") as? Bool) ?? (defaults.string(forKey: "promptStyle") == nil)
         }
 
         private func save() {
@@ -35,10 +41,14 @@ final class KagamiStore {
             defaults.set(defaultDeck, forKey: "ankiDeck")
             defaults.set(noteType, forKey: "ankiNoteType")
             defaults.set(promptStyle, forKey: "promptStyle")
+            defaults.set(languageCode, forKey: "languageCode")
+            defaults.set(hasCompletedLanguageSetup, forKey: "hasCompletedLanguageSetup")
+            defaults.set(usesDefaultPromptStyle, forKey: "usesDefaultPromptStyle")
         }
     }
 
     var preferences = Preferences()
+    var language: AppLanguage { AppLanguage(rawValue: preferences.languageCode) ?? .simplifiedChinese }
     var input = ""
     var translation = ""
     var modelNames: [String] = []
@@ -51,6 +61,8 @@ final class KagamiStore {
     var successMessage: String?
     var modelStatus = ""
     private var hasRestoredSavedConnections = false
+    private var cachedAPIKey: String?
+    private(set) var hasStoredAPIKey = false
 
     private let ollama: any OllamaServing
     private let api: any APIModelServing
@@ -65,11 +77,19 @@ final class KagamiStore {
         self.preferences = preferences
     }
 
-    var hasAvailableModel: Bool { !preferences.modelName.isEmpty || (preferences.cloudEnabled && !preferences.cloudModelName.isEmpty && apiKeyStore.load() != nil) }
+    var hasAvailableModel: Bool { !preferences.modelName.isEmpty || (preferences.cloudEnabled && !preferences.cloudModelName.isEmpty) }
     var canTranslate: Bool { !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && hasAvailableModel && !isWorking }
     var canCreateCard: Bool { !input.isEmpty && !translation.isEmpty && !preferences.noteType.isEmpty && !preferences.defaultDeck.isEmpty && !isWorking }
 
     func clearError() { error = nil }
+
+    func selectLanguage(_ language: AppLanguage, completingSetup: Bool = false) {
+        preferences.languageCode = language.rawValue
+        if preferences.usesDefaultPromptStyle { preferences.promptStyle = language.defaultPromptStyle }
+        if completingSetup { preferences.hasCompletedLanguageSetup = true }
+    }
+
+    func markPromptStyleAsCustom() { preferences.usesDefaultPromptStyle = false }
 
     /// Rehydrates the saved model, deck, note type, and fields when the app opens.
     /// Startup failures stay quiet: the Settings screen still provides explicit repair actions.
@@ -127,7 +147,7 @@ final class KagamiStore {
     func translate() async {
         let word = input.trimmingCharacters(in: .whitespacesAndNewlines)
         await perform {
-            let answer = try await self.generate(prompt: PromptFactory.translation(word: word, style: self.preferences.promptStyle), system: PromptFactory.translationSystem)
+            let answer = try await self.generate(prompt: PromptFactory.translation(word: word, style: self.preferences.promptStyle, targetLanguage: self.language), system: PromptFactory.translationSystem(targetLanguage: self.language))
             self.translation = try TranslationExtractor.extract(from: answer)
         }
     }
@@ -138,7 +158,7 @@ final class KagamiStore {
         var succeeded = false
         await perform {
             guard !self.fieldNames.isEmpty else { throw KagamiError.configuration("请在设置中选择 Anki 笔记类型，并刷新字段。") }
-            let prompt = PromptFactory.card(word: word, translation: translated, example: example, fields: self.fieldNames, style: self.preferences.promptStyle)
+            let prompt = PromptFactory.card(word: word, translation: translated, example: example, fields: self.fieldNames, style: self.preferences.promptStyle, targetLanguage: self.language)
             let answer = try await self.generate(prompt: prompt, system: nil)
             self.previewFields = try JSONFieldDecoder.decodeFields(from: answer, requiredKeys: self.fieldNames)
             succeeded = true
@@ -179,19 +199,39 @@ final class KagamiStore {
         catch let unexpected { self.error = .connection(service: "本地服务", detail: unexpected.localizedDescription) }
     }
 
-    func loadAPIKey() -> String { apiKeyStore.load() ?? "" }
+    /// Only explicit work reads the secret. Successful authorization is reused until quit.
+    func loadAPIKey() throws -> String {
+        if let cachedAPIKey { return cachedAPIKey }
+        let key = try apiKeyStore.load() ?? ""
+        hasStoredAPIKey = !key.isEmpty
+        if !key.isEmpty { cachedAPIKey = key }
+        return key
+    }
 
-    func saveAPIKey(_ key: String) throws { try apiKeyStore.save(key) }
-
-    func updateAPIKey(_ key: String) {
-        do { try saveAPIKey(key) }
+    func refreshAPIKeyStatus() {
+        do { hasStoredAPIKey = try apiKeyStore.containsKey() }
         catch let known as KagamiError { error = known }
-        catch { self.error = .configuration("无法将 API 密钥保存到钥匙串。") }
+        catch { self.error = .configuration(error.localizedDescription) }
+    }
+
+    @discardableResult
+    func updateAPIKey(_ key: String) -> Bool {
+        let cleaned = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        do {
+            try apiKeyStore.save(cleaned)
+            cachedAPIKey = cleaned.isEmpty ? nil : cleaned
+            hasStoredAPIKey = !cleaned.isEmpty
+            error = nil
+            return true
+        } catch let known as KagamiError { error = known }
+        catch { self.error = .configuration(error.localizedDescription) }
+        return false
     }
 
     private func generate(prompt: String, system: String?) async throws -> String {
         if preferences.cloudEnabled {
-            let apiKey = apiKeyStore.load() ?? ""
+            // Authorization failures must reach the UI, not silently fall back to a local model.
+            let apiKey = preferences.cloudModelName.isEmpty ? "" : try loadAPIKey()
             if !preferences.cloudModelName.isEmpty, !apiKey.isEmpty {
                 do {
                     let answer = try await api.generate(baseURL: preferences.cloudBaseURL, apiKey: apiKey, model: preferences.cloudModelName, prompt: prompt, system: system)

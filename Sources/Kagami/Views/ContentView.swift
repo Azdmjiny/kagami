@@ -9,34 +9,34 @@ struct ContentView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             header
-            GroupBox("输入") {
+            GroupBox(store.text("输入")) {
                 VStack(alignment: .leading, spacing: 10) {
-                    TextField("输入单词或短语", text: $store.input)
+                    TextField(store.text("输入单词或短语"), text: $store.input)
                         .textFieldStyle(.roundedBorder)
                         .onSubmit {
                             guard store.canTranslate else { return }
                             Task { await store.translate() }
                         }
                     HStack {
-                        Text("自动识别语言，翻译为简体中文")
+                        Text(store.text("自动识别语言，翻译为所选语言"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         Spacer()
-                        Button("生成翻译") { Task { await store.translate() } }
+                        Button(store.text("生成翻译")) { Task { await store.translate() } }
                             .disabled(!store.canTranslate)
                     }
                 }
                 .padding(4)
             }
 
-            GroupBox("翻译") {
+            GroupBox(store.text("翻译")) {
                 VStack(alignment: .leading, spacing: 8) {
                     TextEditor(text: $store.translation)
                         .font(.body)
                         .frame(minHeight: 150)
                         .overlay(alignment: .topLeading) {
                             if store.translation.isEmpty {
-                                Text("翻译结果将在这里出现，并且可以手动修改。")
+                                Text(store.text("翻译结果将在这里出现，并且可以手动修改。"))
                                     .foregroundStyle(.tertiary)
                                     .padding(8)
                                     .allowsHitTesting(false)
@@ -53,7 +53,7 @@ struct ContentView: View {
             HStack {
                 if store.isWorking { ProgressView().controlSize(.small) }
                 Spacer()
-                Button("添加到 Anki") {
+                Button(store.text("添加到 Anki")) {
                     chosenDeck = store.preferences.defaultDeck
                     showAddSheet = true
                 }
@@ -63,7 +63,7 @@ struct ContentView: View {
             }
         }
         .padding(24)
-        .toolbar { ToolbarItem(placement: .primaryAction) { SettingsLink { Label("设置", systemImage: "gearshape") } } }
+        .toolbar { ToolbarItem(placement: .primaryAction) { SettingsLink { Label(store.text("设置"), systemImage: "gearshape") } } }
         .task { await store.restoreSavedConnections() }
         .sheet(isPresented: $showAddSheet) {
             AddCardSheet(store: store, deck: $chosenDeck) {
@@ -74,11 +74,11 @@ struct ContentView: View {
         .sheet(isPresented: $showPreview) {
             CardPreviewSheet(store: store, deck: $chosenDeck) { showPreview = false }
         }
-        .alert("无法完成操作", isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.clearError() } })) {
-            Button("好", role: .cancel) { store.clearError() }
-        } message: { Text(store.error?.localizedDescription ?? "未知错误") }
+        .alert(store.text("无法完成操作"), isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.clearError() } })) {
+            Button(store.text("好"), role: .cancel) { store.clearError() }
+        } message: { Text(store.error?.localizedDescription ?? store.text("未知错误")) }
         .alert("Kagami", isPresented: Binding(get: { store.successMessage != nil }, set: { if !$0 { store.successMessage = nil } })) {
-            Button("好") { store.successMessage = nil }
+            Button(store.text("好")) { store.successMessage = nil }
         } message: { Text(store.successMessage ?? "") }
     }
 
@@ -86,7 +86,7 @@ struct ContentView: View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Kagami").font(.largeTitle.weight(.semibold))
-                Text("翻译、确认，再写入你的 Anki 卡组。")
+                Text(store.text("翻译、确认，再写入你的 Anki 卡组。"))
                     .foregroundStyle(.secondary)
             }
             Spacer()
@@ -103,19 +103,19 @@ private struct AddCardSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("准备卡片").font(.title2.weight(.semibold))
-            Picker("写入卡组", selection: $deck) {
+            Text(store.text("准备卡片")).font(.title2.weight(.semibold))
+            Picker(store.text("写入卡组"), selection: $deck) {
                 ForEach(store.deckNames, id: \.self) { Text($0).tag($0) }
             }
-            TextField("例句（可选，留空则由 AI 生成）", text: $example, axis: .vertical)
+            TextField(store.text("例句（可选，留空则由 AI 生成）"), text: $example, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
                 .lineLimit(2...4)
-            Text("下一步将按当前 Anki 笔记类型的字段名生成内容，供你确认。")
+            Text(store.text("下一步将按当前 Anki 笔记类型的字段名生成内容，供你确认。"))
                 .font(.caption).foregroundStyle(.secondary)
             HStack {
-                Button("取消") { dismiss() }.keyboardShortcut(.cancelAction)
+                Button(store.text("取消")) { dismiss() }.keyboardShortcut(.cancelAction)
                 Spacer()
-                Button("生成卡片预览") {
+                Button(store.text("生成卡片预览")) {
                     Task { if await store.generateCard(example: example) { onPreview() } }
                 }
                 .buttonStyle(.borderedProminent)
@@ -135,8 +135,8 @@ private struct CardPreviewSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("确认写入内容").font(.title2.weight(.semibold))
-            Picker("目标卡组", selection: $deck) { ForEach(store.deckNames, id: \.self) { Text($0).tag($0) } }
+            Text(store.text("确认写入内容")).font(.title2.weight(.semibold))
+            Picker(store.text("目标卡组"), selection: $deck) { ForEach(store.deckNames, id: \.self) { Text($0).tag($0) } }
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
                     ForEach(store.fieldNames, id: \.self) { name in
@@ -150,9 +150,9 @@ private struct CardPreviewSheet: View {
                 }
             }
             HStack {
-                Button("取消") { onClose(); dismiss() }
+                Button(store.text("取消")) { onClose(); dismiss() }
                 Spacer()
-                Button("确认添加") {
+                Button(store.text("确认添加")) {
                     Task { if await store.addCurrentCard(to: deck) { onClose(); dismiss() } }
                 }
                 .buttonStyle(.borderedProminent)

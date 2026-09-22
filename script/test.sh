@@ -5,8 +5,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CHECK_BINARY="${TMPDIR:-/tmp}/kagami-model-checks"
 
 cd "$ROOT_DIR"
-swift build
 swiftc \
+  Sources/Kagami/Models/AppLanguage.swift \
   Sources/Kagami/Models/KagamiModels.swift \
   Sources/Kagami/Services/OllamaClient.swift \
   Sources/Kagami/Services/APIModelClient.swift \
@@ -17,3 +17,6 @@ swiftc \
   -framework Security \
   -o "$CHECK_BINARY"
 "$CHECK_BINARY"
+
+# Exercise the packaged localization lookup and language preference lifecycle.
+swift test

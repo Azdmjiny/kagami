@@ -71,41 +71,42 @@ enum TranslationExtractor {
 }
 
 enum PromptFactory {
-    static let defaultStyle = """
-    使用自然、简明的简体中文。翻译应准确，释义适合制作记忆卡片；例句要自然并体现词义。
-    """
+    static let defaultStyle = AppLanguage.simplifiedChinese.defaultPromptStyle
 
-    static let translationSystem = """
-    你是 Kagami 的翻译引擎。你的 JSON 回复仅供应用内部解析，用户永远不应看见 JSON。
-    你必须只返回一个合法 JSON 对象：{"translation":"..."}。
-    translation 的值必须是最终给用户看的纯简体中文译文：不得包含 JSON、字段名、Markdown、代码围栏或解释性前缀。
-    """
-
-    static func translation(word: String, style: String) -> String {
+    static func translationSystem(targetLanguage: AppLanguage) -> String {
         """
-        自动识别输入语言并翻译为简体中文。
-        用户的学习风格要求：
-        \(style)
-
-        输入：\(word)
-        只翻译该输入。
+        You are Kagami's translation engine. Your JSON reply is parsed internally and is never shown to the user.
+        Return exactly one valid JSON object: {"translation":"..."}.
+        The translation value must be the final user-facing translation in \(targetLanguage.promptName). Do not include JSON, field names, Markdown, code fences, or explanatory prefixes inside it.
         """
     }
 
-    static func card(word: String, translation: String, example: String, fields: [String], style: String) -> String {
-        let fieldList = fields.map { "\"\($0)\"" }.joined(separator: ", ")
-        let exampleInstruction = example.isEmpty ? "用户没有提供例句，请在需要例句的字段中自行生成自然例句。" : "用户提供的例句是：\(example)。优先在对应例句字段使用它。"
-        return """
-        你是严谨的语言学习助手。自动识别原词语言，使用简体中文生成学习卡片内容。
-        用户的学习风格要求：
+    static func translation(word: String, style: String, targetLanguage: AppLanguage) -> String {
+        """
+        Detect the input language automatically and translate it into \(targetLanguage.promptName).
+        The user's learning-style instructions are:
         \(style)
 
-        原词或短语：\(word)
-        用户确认的翻译：\(translation)
+        Input: \(word)
+        Translate only that input.
+        """
+    }
+
+    static func card(word: String, translation: String, example: String, fields: [String], style: String, targetLanguage: AppLanguage) -> String {
+        let fieldList = fields.map { "\"\($0)\"" }.joined(separator: ", ")
+        let exampleInstruction = example.isEmpty ? "The user did not provide an example. Generate natural examples in the input word's language wherever an example is needed." : "The user's example is: \(example). Preserve it verbatim wherever appropriate; do not translate or rewrite it."
+        return """
+        You are a precise language-learning assistant. Detect the source language automatically.
+        Write every newly generated definition, explanation, grammar note, and other non-example content in \(targetLanguage.promptName). Write every newly generated example sentence in the input word's language. Never translate or alter an example supplied by the user.
+        The user's learning-style instructions are:
+        \(style)
+
+        Source word or phrase: \(word)
+        User-confirmed translation: \(translation)
         \(exampleInstruction)
 
-        Anki 笔记类型的字段名为：[\(fieldList)]。
-        根据字段名推断其含义，并为每一个字段输出合适的纯文本内容。必须返回一个 JSON 对象，键名必须与所有字段名完全一致，值必须是字符串。不要使用 Markdown、代码围栏或额外解释。
+        The Anki note type has these field names: [\(fieldList)].
+        Infer each field's intent from its name and return suitable plain text for every field. Return exactly one JSON object whose keys exactly match all field names and whose values are strings. Do not use Markdown, code fences, or extra explanation.
         """
     }
 }

@@ -15,9 +15,15 @@ struct KagamiModelChecks {
                 throw CheckFailure(message: "缺少字段时未拒绝模型输出。")
             } catch is KagamiError { }
 
-            let prompt = PromptFactory.card(word: "apple", translation: "苹果", example: "", fields: ["Front", "Back"], style: "简洁")
+            let prompt = PromptFactory.card(word: "apple", translation: "苹果", example: "", fields: ["Front", "Back"], style: "简洁", targetLanguage: .simplifiedChinese)
             try require(prompt.contains("\"Front\"") && prompt.contains("\"Back\""), "提示词未包含全部 Anki 字段。")
-            try require(prompt.contains("自行生成自然例句"), "跳过例句时提示词不完整。")
+            try require(prompt.contains("Generate natural examples"), "跳过例句时提示词不完整。")
+            let japanesePrompt = PromptFactory.translation(word: "apple", style: AppLanguage.japanese.defaultPromptStyle, targetLanguage: .japanese)
+            try require(japanesePrompt.contains("Japanese"), "翻译提示词没有采用目标语言。")
+            let japaneseSystem = PromptFactory.translationSystem(targetLanguage: .japanese)
+            try require(japaneseSystem.contains("Japanese"), "翻译系统提示词没有采用目标语言。")
+            let japaneseTranslation = try TranslationExtractor.extract(from: "{\"translation\":\"壊れている\"}")
+            try require(japaneseTranslation == "壊れている", "无法解析日文翻译结果。")
 
             try await verifiesCardWorkflowWithMockServices()
             try await verifiesSavedConnectionRestore()
@@ -123,6 +129,7 @@ private actor FailingAPI: APIModelServing {
 private struct MockAPIKeyStore: APIKeyStoring {
     let key: String
     func load() -> String? { key.isEmpty ? nil : key }
+    func containsKey() -> Bool { !key.isEmpty }
     func save(_ key: String) throws {}
 }
 
