@@ -53,3 +53,12 @@
 "Continue" = "Continuer";
 "翻译结果将在这里出现，并且可以手动修改。" = "Votre traduction apparaîtra ici et pourra être modifiée.";
 "保存 API 密钥" = "Enregistrer la clé API";
+"响应速度与思考深度" = "Vitesse de réponse et profondeur de raisonnement";
+"翻译思考深度" = "Raisonnement pour la traduction";
+"制卡思考深度" = "Raisonnement pour les cartes";
+"模型默认" = "Valeur par défaut du modèle";
+"快速（少思考）" = "Rapide (moins de raisonnement)";
+"均衡" = "Équilibré";
+"深入" = "Approfondi";
+"快速模式优先减少思考；本地模型支持时关闭思考。深入模式可能更慢。不支持的设置会使用模型默认值。" = "Le mode rapide réduit le raisonnement et le désactive sur les modèles locaux compatibles. Le mode approfondi peut être plus lent. Les réglages non pris en charge utilisent la valeur par défaut du modèle.";
+"思考设置不可用，已使用模型默认" = "Réglage de raisonnement indisponible ; valeur par défaut du modèle utilisée";

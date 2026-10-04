@@ -16,6 +16,7 @@ let package = Package(
             resources: [.process("Resources")]
         ),
         .testTarget(name: "LocalizationTests", dependencies: ["Kagami"], path: "Tests/LocalizationTests"),
-        .testTarget(name: "APIKeyTests", dependencies: ["Kagami"], path: "Tests/APIKeyTests")
+        .testTarget(name: "APIKeyTests", dependencies: ["Kagami"], path: "Tests/APIKeyTests"),
+        .testTarget(name: "ThinkingTests", dependencies: ["Kagami"], path: "Tests/ThinkingTests")
     ]
 )

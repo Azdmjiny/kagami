@@ -53,3 +53,12 @@
 "Language" = "Language";
 "Continue" = "Continue";
 "保存 API 密钥" = "Save API key";
+"响应速度与思考深度" = "Response speed and thinking depth";
+"翻译思考深度" = "Translation thinking depth";
+"制卡思考深度" = "Card thinking depth";
+"模型默认" = "Model default";
+"快速（少思考）" = "Fast (less thinking)";
+"均衡" = "Balanced";
+"深入" = "Deep";
+"快速模式优先减少思考；本地模型支持时关闭思考。深入模式可能更慢。不支持的设置会使用模型默认值。" = "Fast mode reduces thinking and disables it locally when supported. Deep mode may be slower. Unsupported settings use the model default.";
+"思考设置不可用，已使用模型默认" = "Thinking setting unavailable; using model default";

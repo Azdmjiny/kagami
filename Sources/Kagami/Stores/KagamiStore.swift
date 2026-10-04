@@ -16,6 +16,8 @@ final class KagamiStore {
         var languageCode: String { didSet { save() } }
         var hasCompletedLanguageSetup: Bool { didSet { save() } }
         var usesDefaultPromptStyle: Bool { didSet { save() } }
+        var translationThinking: ThinkingDepth { didSet { save() } }
+        var cardThinking: ThinkingDepth { didSet { save() } }
 
         init(defaults: UserDefaults = .standard) {
             self.defaults = defaults
@@ -30,6 +32,8 @@ final class KagamiStore {
             languageCode = defaults.string(forKey: "languageCode") ?? AppLanguage.simplifiedChinese.rawValue
             hasCompletedLanguageSetup = defaults.object(forKey: "hasCompletedLanguageSetup") as? Bool ?? false
             usesDefaultPromptStyle = (defaults.object(forKey: "usesDefaultPromptStyle") as? Bool) ?? (defaults.string(forKey: "promptStyle") == nil)
+            translationThinking = defaults.string(forKey: "translationThinking").flatMap(ThinkingDepth.init(rawValue:)) ?? .fast
+            cardThinking = defaults.string(forKey: "cardThinking").flatMap(ThinkingDepth.init(rawValue:)) ?? .fast
         }
 
         private func save() {
@@ -44,6 +48,8 @@ final class KagamiStore {
             defaults.set(languageCode, forKey: "languageCode")
             defaults.set(hasCompletedLanguageSetup, forKey: "hasCompletedLanguageSetup")
             defaults.set(usesDefaultPromptStyle, forKey: "usesDefaultPromptStyle")
+            defaults.set(translationThinking.rawValue, forKey: "translationThinking")
+            defaults.set(cardThinking.rawValue, forKey: "cardThinking")
         }
     }
 
@@ -147,7 +153,7 @@ final class KagamiStore {
     func translate() async {
         let word = input.trimmingCharacters(in: .whitespacesAndNewlines)
         await perform {
-            let answer = try await self.generate(prompt: PromptFactory.translation(word: word, style: self.preferences.promptStyle, targetLanguage: self.language), system: PromptFactory.translationSystem(targetLanguage: self.language))
+            let answer = try await self.generate(prompt: PromptFactory.translation(word: word, style: self.preferences.promptStyle, targetLanguage: self.language), system: PromptFactory.translationSystem(targetLanguage: self.language), thinking: self.preferences.translationThinking)
             self.translation = try TranslationExtractor.extract(from: answer)
         }
     }
@@ -159,7 +165,7 @@ final class KagamiStore {
         await perform {
             guard !self.fieldNames.isEmpty else { throw KagamiError.configuration("请在设置中选择 Anki 笔记类型，并刷新字段。") }
             let prompt = PromptFactory.card(word: word, translation: translated, example: example, fields: self.fieldNames, style: self.preferences.promptStyle, targetLanguage: self.language)
-            let answer = try await self.generate(prompt: prompt, system: nil)
+            let answer = try await self.generate(prompt: prompt, system: nil, thinking: self.preferences.cardThinking)
             self.previewFields = try JSONFieldDecoder.decodeFields(from: answer, requiredKeys: self.fieldNames)
             succeeded = true
         }
@@ -228,15 +234,16 @@ final class KagamiStore {
         return false
     }
 
-    private func generate(prompt: String, system: String?) async throws -> String {
+    private func generate(prompt: String, system: String?, thinking: ThinkingDepth) async throws -> String {
         if preferences.cloudEnabled {
             // Authorization failures must reach the UI, not silently fall back to a local model.
             let apiKey = preferences.cloudModelName.isEmpty ? "" : try loadAPIKey()
             if !preferences.cloudModelName.isEmpty, !apiKey.isEmpty {
                 do {
-                    let answer = try await api.generate(baseURL: preferences.cloudBaseURL, apiKey: apiKey, model: preferences.cloudModelName, prompt: prompt, system: system)
+                    let answer = try await api.generate(baseURL: preferences.cloudBaseURL, apiKey: apiKey, model: preferences.cloudModelName, prompt: prompt, system: system, thinking: thinking)
                     modelStatus = "已使用云端模型：\(preferences.cloudModelName)"
-                    return answer
+                    if answer.usedDefaultThinking { modelStatus += " · " + defaultThinkingStatus }
+                    return answer.text
                 } catch {
                     guard preferences.fallbackToLocal, !preferences.modelName.isEmpty else { throw error }
                     modelStatus = "云端不可用，已回退本地模型：\(preferences.modelName)"
@@ -246,8 +253,17 @@ final class KagamiStore {
             }
         }
         guard !preferences.modelName.isEmpty else { throw KagamiError.configuration("没有可用模型。请配置云端 API，或选择本地 Ollama 模型。") }
-        let answer = try await ollama.generate(model: preferences.modelName, prompt: prompt, system: system)
+        let answer = try await ollama.generate(model: preferences.modelName, prompt: prompt, system: system, thinking: thinking)
         if modelStatus.isEmpty { modelStatus = "已使用本地模型：\(preferences.modelName)" }
-        return answer
+        if answer.usedDefaultThinking { modelStatus += " · " + defaultThinkingStatus }
+        return answer.text
+    }
+
+    private var defaultThinkingStatus: String {
+        #if SWIFT_PACKAGE
+        text("思考设置不可用，已使用模型默认")
+        #else
+        "思考设置不可用，已使用模型默认"
+        #endif
     }
 }

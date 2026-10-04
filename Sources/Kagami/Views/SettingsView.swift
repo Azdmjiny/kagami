@@ -53,6 +53,16 @@ struct SettingsView: View {
                 Text(store.text("默认接口是 OpenAI 兼容的 Chat Completions：例如 https://api.openai.com/v1。"))
                     .font(.caption).foregroundStyle(.secondary)
             }
+            Section(store.text("响应速度与思考深度")) {
+                Picker(store.text("翻译思考深度"), selection: $store.preferences.translationThinking) {
+                    ForEach(ThinkingDepth.allCases, id: \.self) { depth in Text(store.text(depth.title)).tag(depth) }
+                }
+                Picker(store.text("制卡思考深度"), selection: $store.preferences.cardThinking) {
+                    ForEach(ThinkingDepth.allCases, id: \.self) { depth in Text(store.text(depth.title)).tag(depth) }
+                }
+                Text(store.text("快速模式优先减少思考；本地模型支持时关闭思考。深入模式可能更慢。不支持的设置会使用模型默认值。"))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Section("AnkiConnect") {
                 Picker(store.text("默认卡组"), selection: $store.preferences.defaultDeck) {
                     Text(store.text("请选择")).tag("")

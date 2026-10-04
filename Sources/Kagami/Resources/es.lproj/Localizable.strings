@@ -53,3 +53,12 @@
 "Continue" = "Continuar";
 "翻译结果将在这里出现，并且可以手动修改。" = "La traducción aparecerá aquí y podrás editarla.";
 "保存 API 密钥" = "Guardar clave API";
+"响应速度与思考深度" = "Velocidad de respuesta y profundidad de razonamiento";
+"翻译思考深度" = "Razonamiento para traducciones";
+"制卡思考深度" = "Razonamiento para tarjetas";
+"模型默认" = "Predeterminado del modelo";
+"快速（少思考）" = "Rápido (menos razonamiento)";
+"均衡" = "Equilibrado";
+"深入" = "Profundo";
+"快速模式优先减少思考；本地模型支持时关闭思考。深入模式可能更慢。不支持的设置会使用模型默认值。" = "El modo rápido reduce el razonamiento y lo desactiva en modelos locales compatibles. El modo profundo puede ser más lento. Los ajustes no compatibles usan el valor predeterminado del modelo.";
+"思考设置不可用，已使用模型默认" = "Ajuste de razonamiento no disponible; se usa el predeterminado del modelo";

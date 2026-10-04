@@ -109,19 +109,19 @@ private actor MockOllama: OllamaServing {
     private var responses: [String]
     init(responses: [String]) { self.responses = responses }
     func fetchModels() async throws -> [String] { ["qwen3:4b-instruct"] }
-    func generate(model: String, prompt: String, system: String?) async throws -> String {
+    func generate(model: String, prompt: String, system: String?, thinking: ThinkingDepth) async throws -> ModelGeneration {
         guard !responses.isEmpty else { throw KagamiError.invalidModelResponse }
-        return responses.removeFirst()
+        return ModelGeneration(text: responses.removeFirst())
     }
 }
 
 private actor FailingOllama: OllamaServing {
     func fetchModels() async throws -> [String] { throw KagamiError.connection(service: "Ollama", detail: "未运行") }
-    func generate(model: String, prompt: String, system: String?) async throws -> String { throw KagamiError.connection(service: "Ollama", detail: "未运行") }
+    func generate(model: String, prompt: String, system: String?, thinking: ThinkingDepth) async throws -> ModelGeneration { throw KagamiError.connection(service: "Ollama", detail: "未运行") }
 }
 
 private actor FailingAPI: APIModelServing {
-    func generate(baseURL: String, apiKey: String, model: String, prompt: String, system: String?) async throws -> String {
+    func generate(baseURL: String, apiKey: String, model: String, prompt: String, system: String?, thinking: ThinkingDepth) async throws -> ModelGeneration {
         throw KagamiError.connection(service: "云端 API", detail: "离线")
     }
 }

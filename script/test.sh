@@ -8,6 +8,7 @@ cd "$ROOT_DIR"
 swiftc \
   Sources/Kagami/Models/AppLanguage.swift \
   Sources/Kagami/Models/KagamiModels.swift \
+  Sources/Kagami/Models/ThinkingDepth.swift \
   Sources/Kagami/Services/OllamaClient.swift \
   Sources/Kagami/Services/APIModelClient.swift \
   Sources/Kagami/Services/APIKeyStore.swift \
