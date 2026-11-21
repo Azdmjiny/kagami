@@ -15,9 +15,9 @@ struct KagamiModelChecks {
                 throw CheckFailure(message: "缺少字段时未拒绝模型输出。")
             } catch is KagamiError { }
 
-            let prompt = PromptFactory.card(word: "apple", translation: "苹果", example: "", fields: ["Front", "Back"], style: "简洁", targetLanguage: .simplifiedChinese)
+            let prompt = PromptFactory.card(word: "apple", fields: ["Front", "Back"], style: "简洁", targetLanguage: .simplifiedChinese)
             try require(prompt.contains("\"Front\"") && prompt.contains("\"Back\""), "提示词未包含全部 Anki 字段。")
-            try require(prompt.contains("Generate natural examples"), "跳过例句时提示词不完整。")
+            try require(prompt.contains("Generate natural examples"), "提示词未要求生成例句。")
             let japanesePrompt = PromptFactory.translation(word: "apple", style: AppLanguage.japanese.defaultPromptStyle, targetLanguage: .japanese)
             try require(japanesePrompt.contains("Japanese"), "翻译提示词没有采用目标语言。")
             let japaneseSystem = PromptFactory.translationSystem(targetLanguage: .japanese)
@@ -42,17 +42,19 @@ struct KagamiModelChecks {
 
     @MainActor
     private static func verifiesCardWorkflowWithMockServices() async throws {
-        let ollama = MockOllama(responses: ["{\"translation\":\"苹果\"}", "{\"Front\":\"apple\",\"Back\":\"苹果；一种水果\"}"])
+        let ollama = MockOllama(responses: ["{\"Front\":\"apple\",\"Back\":\"苹果；一种水果\"}"])
         let anki = MockAnki()
         let store = makeTestStore(ollama: ollama, anki: anki)
         await store.refreshOllama()
         await store.refreshAnki()
         store.input = "apple"
-        await store.translate()
-        try require(store.translation == "苹果", "翻译结果未写回主界面。")
-        try require(await store.generateCard(example: "I ate an apple."), "无法生成字段预览。")
-        try require(store.previewFields["Back"] == "苹果；一种水果", "字段预览内容错误。")
+        await store.generateCard()
+        try require(store.error == nil, "无法生成卡片。")
+        try require(store.previewFields["Back"] == "苹果；一种水果", "卡片内容错误。")
+        try require(store.resultWord == "apple", "卡片未记录对应单词。")
+        try require(await ollama.callCount == 1, "生成卡片应只调用一次模型。")
         try require(await store.addCurrentCard(to: "词汇"), "无法确认写入卡片。")
+        try require(store.input.isEmpty && store.previewFields.isEmpty, "添加后没有清空，无法继续输入下一个单词。")
         let note = await anki.lastNote
         try require(note?.deck == "词汇" && note?.model == "词汇卡", "写入卡组或笔记类型错误。")
         try require(note?.fields["Front"] == "apple", "写入 Anki 的字段错误。")
@@ -62,7 +64,7 @@ struct KagamiModelChecks {
     private static func verifiesServiceFailuresReachTheUIState() async throws {
         let store = makeTestStore(ollama: FailingOllama(), anki: MockAnki())
         store.input = "apple"
-        await store.translate()
+        await store.generateCard()
         try require(store.error != nil, "Ollama 失败没有显示给界面。")
     }
 
@@ -86,7 +88,7 @@ struct KagamiModelChecks {
         store.preferences.cloudModelName = "strong-cloud-model"
         store.preferences.fallbackToLocal = true
         store.input = "apple"
-        await store.translate()
+        await store.generateCard()
         try require(store.translation == "本地苹果", "云端失败后没有回退到本地模型。")
         try require(store.modelStatus.contains("回退"), "界面没有说明已回退本地模型。")
     }
@@ -107,9 +109,11 @@ private struct CheckFailure: Error, LocalizedError {
 
 private actor MockOllama: OllamaServing {
     private var responses: [String]
+    var callCount = 0
     init(responses: [String]) { self.responses = responses }
     func fetchModels() async throws -> [String] { ["qwen3:4b-instruct"] }
     func generate(model: String, prompt: String, system: String?, thinking: ThinkingDepth) async throws -> ModelGeneration {
+        callCount += 1
         guard !responses.isEmpty else { throw KagamiError.invalidModelResponse }
         return ModelGeneration(text: responses.removeFirst())
     }

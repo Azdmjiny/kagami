@@ -16,7 +16,6 @@ final class KagamiStore {
         var languageCode: String { didSet { save() } }
         var hasCompletedLanguageSetup: Bool { didSet { save() } }
         var usesDefaultPromptStyle: Bool { didSet { save() } }
-        var translationThinking: ThinkingDepth { didSet { save() } }
         var cardThinking: ThinkingDepth { didSet { save() } }
 
         init(defaults: UserDefaults = .standard) {
@@ -32,7 +31,6 @@ final class KagamiStore {
             languageCode = defaults.string(forKey: "languageCode") ?? AppLanguage.simplifiedChinese.rawValue
             hasCompletedLanguageSetup = defaults.object(forKey: "hasCompletedLanguageSetup") as? Bool ?? false
             usesDefaultPromptStyle = (defaults.object(forKey: "usesDefaultPromptStyle") as? Bool) ?? (defaults.string(forKey: "promptStyle") == nil)
-            translationThinking = defaults.string(forKey: "translationThinking").flatMap(ThinkingDepth.init(rawValue:)) ?? .fast
             cardThinking = defaults.string(forKey: "cardThinking").flatMap(ThinkingDepth.init(rawValue:)) ?? .fast
         }
 
@@ -48,7 +46,6 @@ final class KagamiStore {
             defaults.set(languageCode, forKey: "languageCode")
             defaults.set(hasCompletedLanguageSetup, forKey: "hasCompletedLanguageSetup")
             defaults.set(usesDefaultPromptStyle, forKey: "usesDefaultPromptStyle")
-            defaults.set(translationThinking.rawValue, forKey: "translationThinking")
             defaults.set(cardThinking.rawValue, forKey: "cardThinking")
         }
     }
@@ -56,12 +53,16 @@ final class KagamiStore {
     var preferences = Preferences()
     var language: AppLanguage { AppLanguage(rawValue: preferences.languageCode) ?? .simplifiedChinese }
     var input = ""
+    /// Translation-only result, used when no Anki note type is available to shape a card.
     var translation = ""
+    /// The word the current card or translation was generated for.
+    private(set) var resultWord = ""
     var modelNames: [String] = []
     var deckNames: [String] = []
     var noteTypeNames: [String] = []
     var fieldNames: [String] = []
     var previewFields: [String: String] = [:]
+    var templatePreview: [String: String] = [:]
     var isWorking = false
     var error: KagamiError?
     var successMessage: String?
@@ -84,8 +85,9 @@ final class KagamiStore {
     }
 
     var hasAvailableModel: Bool { !preferences.modelName.isEmpty || (preferences.cloudEnabled && !preferences.cloudModelName.isEmpty) }
-    var canTranslate: Bool { !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && hasAvailableModel && !isWorking }
-    var canCreateCard: Bool { !input.isEmpty && !translation.isEmpty && !preferences.noteType.isEmpty && !preferences.defaultDeck.isEmpty && !isWorking }
+    var canGenerate: Bool { !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && hasAvailableModel && !isWorking }
+    var hasCard: Bool { !previewFields.isEmpty }
+    var canAddCard: Bool { hasCard && !preferences.noteType.isEmpty && !preferences.defaultDeck.isEmpty && !isWorking }
 
     func clearError() { error = nil }
 
@@ -150,26 +152,30 @@ final class KagamiStore {
         fieldNames = try await anki.fieldNames(for: preferences.noteType)
     }
 
-    func translate() async {
+    /// One model call per word: the card doubles as the translation.
+    /// Without a usable Anki note type, falls back to a plain translation.
+    func generateCard() async {
         let word = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        await perform {
-            let answer = try await self.generate(prompt: PromptFactory.translation(word: word, style: self.preferences.promptStyle, targetLanguage: self.language), system: PromptFactory.translationSystem(targetLanguage: self.language), thinking: self.preferences.translationThinking)
-            self.translation = try TranslationExtractor.extract(from: answer)
+        guard !word.isEmpty else { return }
+        previewFields = [:]
+        translation = ""
+        resultWord = ""
+        if fieldNames.isEmpty, !preferences.noteType.isEmpty {
+            // Anki may have been opened after Kagami; quietly try again before falling back.
+            try? await refreshFields()
         }
-    }
-
-    func generateCard(example: String) async -> Bool {
-        let word = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        let translated = translation.trimmingCharacters(in: .whitespacesAndNewlines)
-        var succeeded = false
         await perform {
-            guard !self.fieldNames.isEmpty else { throw KagamiError.configuration("请在设置中选择 Anki 笔记类型，并刷新字段。") }
-            let prompt = PromptFactory.card(word: word, translation: translated, example: example, fields: self.fieldNames, style: self.preferences.promptStyle, targetLanguage: self.language)
-            let answer = try await self.generate(prompt: prompt, system: nil, thinking: self.preferences.cardThinking)
-            self.previewFields = try JSONFieldDecoder.decodeFields(from: answer, requiredKeys: self.fieldNames)
-            succeeded = true
+            let thinking = self.preferences.cardThinking
+            if self.fieldNames.isEmpty {
+                let answer = try await self.generate(prompt: PromptFactory.translation(word: word, style: self.preferences.promptStyle, targetLanguage: self.language), system: PromptFactory.translationSystem(targetLanguage: self.language), thinking: thinking)
+                self.translation = try TranslationExtractor.extract(from: answer)
+            } else {
+                let prompt = PromptFactory.card(word: word, fields: self.fieldNames, style: self.preferences.promptStyle, targetLanguage: self.language)
+                let answer = try await self.generate(prompt: prompt, system: nil, thinking: thinking)
+                self.previewFields = try JSONFieldDecoder.decodeFields(from: answer, requiredKeys: self.fieldNames)
+            }
+            self.resultWord = word
         }
-        return succeeded
     }
 
     func addCurrentCard(to deck: String) async -> Bool {
@@ -181,17 +187,22 @@ final class KagamiStore {
             self.successMessage = "已添加到“\(deck)”。"
             succeeded = true
         }
+        if succeeded {
+            // Ready for the next word.
+            input = ""
+            previewFields = [:]
+            resultWord = ""
+        }
         return succeeded
     }
 
     func testTemplate(word: String) async {
-        let previousInput = input
-        let previousTranslation = translation
+        let previous = (input, translation, previewFields, resultWord)
         input = word
-        await translate()
-        if error == nil { _ = await generateCard(example: "") }
-        input = previousInput
-        translation = previousTranslation
+        await generateCard()
+        let tested = previewFields
+        (input, translation, previewFields, resultWord) = previous
+        templatePreview = tested
     }
 
     private func perform(_ work: () async throws -> Void) async {

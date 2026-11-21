@@ -14,7 +14,7 @@ final class APIKeyTests: XCTestCase {
         store.input = "test"
         for _ in 0..<5 {
             _ = store.hasAvailableModel
-            _ = store.canTranslate
+            _ = store.canGenerate
             _ = store.hasStoredAPIKey
         }
         XCTAssertEqual(keychain.readCount, 0, "Rendering must not trigger Keychain authorization")
@@ -37,9 +37,9 @@ final class APIKeyTests: XCTestCase {
         store.preferences.cloudEnabled = true
         store.preferences.cloudModelName = "test-model"
         store.input = "test"
-        await store.translate()
+        await store.generateCard()
         XCTAssertEqual(store.error, keychain.failure)
-        XCTAssertTrue(store.translation.isEmpty)
+        XCTAssertTrue(store.translation.isEmpty && store.previewFields.isEmpty)
         keychain.failure = nil
         XCTAssertEqual(try store.loadAPIKey(), "fake-test-key")
         XCTAssertEqual(keychain.readCount, 2)

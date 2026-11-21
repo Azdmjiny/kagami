@@ -152,40 +152,38 @@ final class ThinkingTests: XCTestCase {
     }
 
     @MainActor
-    func testPreferencesPersistAndTasksPassTheirOwnDepthIncludingLocalFallback() async throws {
+    func testPreferencePersistsAndSingleCallUsesItIncludingLocalFallback() async throws {
         let suite = "KagamiThinkingTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         var preferences = KagamiStore.Preferences(defaults: defaults)
-        XCTAssertEqual(preferences.translationThinking, .fast)
         XCTAssertEqual(preferences.cardThinking, .fast)
-        preferences.translationThinking = .balanced
         preferences.cardThinking = .deep
         preferences.cloudEnabled = true
         preferences.cloudModelName = "test"
         let restored = KagamiStore.Preferences(defaults: defaults)
-        XCTAssertEqual(restored.translationThinking, .balanced)
         XCTAssertEqual(restored.cardThinking, .deep)
         let api = RecordingAPI()
         let ollama = RecordingOllama()
         let store = KagamiStore(ollama: ollama, api: api, apiKeyStore: TestKey(), preferences: restored)
         store.input = "apple"
         store.fieldNames = ["Front", "Back"]
-        await store.translate()
+        await store.generateCard()
         XCTAssertNil(store.error)
-        let generated = await store.generateCard(example: "")
-        XCTAssertTrue(generated)
+        XCTAssertEqual(store.previewFields["Back"], "苹果")
         let depths = await api.depths
-        XCTAssertEqual(depths, [.balanced, .deep])
+        XCTAssertEqual(depths, [.deep], "One model call per word")
         await api.fail()
-        await store.translate()
+        store.fieldNames = []
+        await store.generateCard()
         XCTAssertNil(store.error)
+        XCTAssertEqual(store.translation, "苹果")
         let localDepths = await ollama.depths
-        XCTAssertEqual(localDepths, [.balanced])
+        XCTAssertEqual(localDepths, [.deep])
         XCTAssertTrue(store.modelStatus.contains("回退"))
         XCTAssertTrue(store.modelStatus.contains("思考设置不可用"))
-        defaults.set("invalid", forKey: "translationThinking")
-        XCTAssertEqual(KagamiStore.Preferences(defaults: defaults).translationThinking, .fast)
+        defaults.set("invalid", forKey: "cardThinking")
+        XCTAssertEqual(KagamiStore.Preferences(defaults: defaults).cardThinking, .fast)
     }
 
     private func fixture(replies: [Reply]) -> (StubServer, URLSession, URL) {

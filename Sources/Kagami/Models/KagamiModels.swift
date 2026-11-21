@@ -92,18 +92,17 @@ enum PromptFactory {
         """
     }
 
-    static func card(word: String, translation: String, example: String, fields: [String], style: String, targetLanguage: AppLanguage) -> String {
+    static func card(word: String, fields: [String], style: String, targetLanguage: AppLanguage) -> String {
         let fieldList = fields.map { "\"\($0)\"" }.joined(separator: ", ")
-        let exampleInstruction = example.isEmpty ? "The user did not provide an example. Generate natural examples in the input word's language wherever an example is needed." : "The user's example is: \(example). Preserve it verbatim wherever appropriate; do not translate or rewrite it."
         return """
         You are a precise language-learning assistant. Detect the source language automatically.
-        Write every newly generated definition, explanation, grammar note, and other non-example content in \(targetLanguage.promptName). Write every newly generated example sentence in the input word's language. Never translate or alter an example supplied by the user.
+        This card is also the user's translation of the input, so every field meant for meaning, translation, or definition must give an accurate, natural translation into \(targetLanguage.promptName).
+        Write every newly generated definition, explanation, grammar note, and other non-example content in \(targetLanguage.promptName). Write every example sentence in the input word's language.
         The user's learning-style instructions are:
         \(style)
 
         Source word or phrase: \(word)
-        User-confirmed translation: \(translation)
-        \(exampleInstruction)
+        Generate natural examples wherever an example is needed.
 
         The Anki note type has these field names: [\(fieldList)].
         Infer each field's intent from its name and return suitable plain text for every field. Return exactly one JSON object whose keys exactly match all field names and whose values are strings. Do not use Markdown, code fences, or extra explanation.

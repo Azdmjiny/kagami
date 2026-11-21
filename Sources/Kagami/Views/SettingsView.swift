@@ -54,10 +54,7 @@ struct SettingsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section(store.text("响应速度与思考深度")) {
-                Picker(store.text("翻译思考深度"), selection: $store.preferences.translationThinking) {
-                    ForEach(ThinkingDepth.allCases, id: \.self) { depth in Text(store.text(depth.title)).tag(depth) }
-                }
-                Picker(store.text("制卡思考深度"), selection: $store.preferences.cardThinking) {
+                Picker(store.text("思考深度"), selection: $store.preferences.cardThinking) {
                     ForEach(ThinkingDepth.allCases, id: \.self) { depth in Text(store.text(depth.title)).tag(depth) }
                 }
                 Text(store.text("快速模式优先减少思考；本地模型支持时关闭思考。深入模式可能更慢。不支持的设置会使用模型默认值。"))
@@ -83,7 +80,7 @@ struct SettingsView: View {
                 }
             }
             Section(store.text("AI 学习风格")) {
-                Text(store.text("此要求同时用于翻译和制卡。Kagami 会自动保证 JSON 格式与 Anki 字段名。"))
+                Text(store.text("此要求用于生成卡片。Kagami 会自动保证 JSON 格式与 Anki 字段名。"))
                     .font(.caption).foregroundStyle(.secondary)
                 TextEditor(text: Binding(get: { store.preferences.promptStyle }, set: { value in
                     store.preferences.promptStyle = value
@@ -97,9 +94,9 @@ struct SettingsView: View {
                         .disabled(testWord.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || store.isWorking)
                     if store.isWorking { ProgressView().controlSize(.small) }
                 }
-                if !store.previewFields.isEmpty {
+                if !store.templatePreview.isEmpty {
                     ForEach(store.fieldNames, id: \.self) { name in
-                        LabeledContent(name, value: store.previewFields[name, default: ""])
+                        LabeledContent(name, value: store.templatePreview[name, default: ""])
                     }
                 }
             }
